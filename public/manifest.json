@@ -1,0 +1,41 @@
+{
+  "id": "/",
+  "short_name": "SDN 6 TNG",
+  "name": "UPT SD Negeri Tangerang 6 - Portal Sekolah & Inventaris",
+  "description": "Sistem Informasi Manajemen Sekolah, E-Learning Classroom LMS, Inventaris Aset, dan Pembelajaran Kurikulum Merdeka UPT SD Negeri Tangerang 6",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#1d4ed8",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["education", "productivity", "management"],
+  "shortcuts": [
+    {
+      "name": "Portal Kelas LMS",
+      "short_name": "Kelas",
+      "description": "Buka Kelas Digital & Pembelajaran",
+      "url": "/?view=classroom"
+    },
+    {
+      "name": "Inventaris SIPERSEDA",
+      "short_name": "Inventaris",
+      "description": "Buka Manajemen Aset & Barang",
+      "url": "/?view=app"
+    },
+    {
+      "name": "Scan QR Aset",
+      "short_name": "Scan QR",
+      "description": "Pindai Kode QR Aset Sekolah",
+      "url": "/?view=app&page=aset"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "UPT SD NEGERI TANGERANG 6",
+  "description": "Sistem Informasi Manajemen Sekolah Terintegrasi, Kelas Digital LMS, Inventaris Aset BOS, dan Pembelajaran Kurikulum Merdeka UPT SD Negeri Tangerang 6 (NPSN 20606498).",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,207 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for hardened validation
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
+    }
+
+    // Helper to extract incoming data
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Validation helper for School Config
+    function isValidConfig(data) {
+      return data.keys().hasAll(['SCHOOL_NAME', 'SCHOOL_NPSN'])
+        && data.SCHOOL_NAME is string && data.SCHOOL_NAME.size() <= 200
+        && data.SCHOOL_NPSN is string && data.SCHOOL_NPSN.size() <= 32;
+    }
+
+    // Validation helper for User/Account
+    function isValidUser(data) {
+      return data.keys().hasAll(['ID', 'USERNAME', 'ROLE'])
+        && data.ID is string && data.ID.size() <= 100
+        && data.USERNAME is string && data.USERNAME.size() <= 64
+        && data.ROLE is string && data.ROLE.size() <= 32
+        && (!('EMAIL' in data) || (data.EMAIL is string && data.EMAIL.size() <= 120))
+        && (!('NAMA' in data) || (data.NAMA is string && data.NAMA.size() <= 150))
+        && (!('STATUS' in data) || (data.STATUS is string && data.STATUS.size() <= 32));
+    }
+
+    // Validation helper for Asset
+    function isValidAsset(data) {
+      return data.keys().hasAll(['ID'])
+        && data.ID is string && data.ID.size() <= 100
+        && (!('NAMA_BARANG' in data) || (data.NAMA_BARANG is string && data.NAMA_BARANG.size() <= 200))
+        && (!('KODE_BARANG' in data) || (data.KODE_BARANG is string && data.KODE_BARANG.size() <= 100));
+    }
+
+    // Validation helper for Inventory Item
+    function isValidItem(data) {
+      return data.keys().hasAll(['ID'])
+        && data.ID is string && data.ID.size() <= 100
+        && (!('NAMA' in data) || (data.NAMA is string && data.NAMA.size() <= 200))
+        && (!('KODE' in data) || (data.KODE is string && data.KODE.size() <= 100));
+    }
+
+    // Validation helper for Barang Masuk
+    function isValidBarangMasuk(data) {
+      return data.keys().hasAll(['ID'])
+        && data.ID is string && data.ID.size() <= 100;
+    }
+
+    // Validation helper for Barang Keluar
+    function isValidBarangKeluar(data) {
+      return data.keys().hasAll(['ID'])
+        && data.ID is string && data.ID.size() <= 100;
+    }
+
+    // Validation helper for Course
+    function isValidCourse(data) {
+      return data.keys().hasAll(['ID'])
+        && data.ID is string && data.ID.size() <= 100;
+    }
+
+    // Validation helper for Assignment
+    function isValidAssignment(data) {
+      return data.keys().hasAll(['ID'])
+        && data.ID is string && data.ID.size() <= 100;
+    }
+
+    // Validation helper for Submission
+    function isValidSubmission(data) {
+      return data.keys().hasAll(['ID'])
+        && data.ID is string && data.ID.size() <= 100;
+    }
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Config Collection Rules
+    match /configs/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id) && isValidConfig(incoming());
+      allow delete: if isValidId(id);
+    }
+
+    // Normalized Accounts Collection Rules
+    match /accounts/{accountId} {
+      allow read: if true;
+      allow create, update: if isValidId(accountId) && isValidUser(incoming());
+      allow delete: if isValidId(accountId);
+    }
+
+    // Normalized Assets Collection Rules
+    match /assets/{assetId} {
+      allow read: if true;
+      allow create, update: if isValidId(assetId) && isValidAsset(incoming());
+      allow delete: if isValidId(assetId);
+    }
+
+    // Normalized Inventory Items Collection Rules
+    match /inventory_items/{itemId} {
+      allow read: if true;
+      allow create, update: if isValidId(itemId) && isValidItem(incoming());
+      allow delete: if isValidId(itemId);
+    }
+
+    // Normalized Barang Masuk Rules
+    match /barang_masuk/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id) && isValidBarangMasuk(incoming());
+      allow delete: if isValidId(id);
+    }
+
+    // Normalized Barang Keluar Rules
+    match /barang_keluar/{id} {
+      allow read: if true;
+      allow create, update: if isValidId(id) && isValidBarangKeluar(incoming());
+      allow delete: if isValidId(id);
+    }
+
+    // Normalized Course Rules
+    match /courses/{courseId} {
+      allow read: if true;
+      allow create, update: if isValidId(courseId) && isValidCourse(incoming());
+      allow delete: if isValidId(courseId);
+    }
+
+    // Normalized Assignment Rules
+    match /assignments/{assignmentId} {
+      allow read: if true;
+      allow create, update: if isValidId(assignmentId) && isValidAssignment(incoming());
+      allow delete: if isValidId(assignmentId);
+    }
+
+    // Normalized Submission Rules
+    match /submissions/{submissionId} {
+      allow read: if true;
+      allow create, update: if isValidId(submissionId) && isValidSubmission(incoming());
+      allow delete: if isValidId(submissionId);
+    }
+
+    // Additional Normalized Collections for school management
+    match /reports/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /forum_posts/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /attendance/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /quizzes/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /suppliers/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /mutasi/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /pemeliharaan/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /penghapusan/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /pengambilan_atk/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /stock_opname_sessions/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /stock_opname_scans/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /procurement_plans/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+    match /procurement_plan_details/{id} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(id);
+    }
+
+    // Backward compatibility match for initial bundles
+    match /school_data/{bundleId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(bundleId);
+    }
+  }
+}

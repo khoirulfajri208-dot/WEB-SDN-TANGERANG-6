@@ -1,0 +1,17 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/api/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "GEMINI_API_KEY",
+      "description": "Google Gemini API key for AI features (receipt OCR, procurement forecasting, assistant, Berita Acara drafting). Optional — the app boots and falls back to local heuristic responses when unset, but AI features need it for real results. Obtain from Google AI Studio (aistudio.google.com).",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "APP_URL",
+      "description": "Public URL where the app is hosted (used for self-referential links). Optional; defaults to http://localhost:3000.",
+      "requiredAtBoot": false
+    }
+  ]
+}

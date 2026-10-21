@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account credentials and role",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "NAMA": { "type": "string" },
+        "ROLE": { "type": "string" },
+        "PIN": { "type": "string" },
+        "KELAS": { "type": "string" },
+        "KELAS_LOCKED": { "type": "boolean" }
+      },
+      "required": ["ID", "NAMA", "ROLE", "PIN"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "School asset item details",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "KODE": { "type": "string" },
+        "NAMA_BARANG": { "type": "string" },
+        "MERK": { "type": "string" },
+        "SUMBER_DANA": { "type": "string" },
+        "TAHUN_PEROLEHAN": { "type": "string" },
+        "LOKASI": { "type": "string" },
+        "PENANGGUNG_JAWAB": { "type": "string" },
+        "KONDISI": { "type": "string" }
+      },
+      "required": ["ID", "KODE", "NAMA_BARANG"]
+    },
+    "Item": {
+      "title": "Item",
+      "description": "Inventory item details",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "KODE": { "type": "string" },
+        "NAMA": { "type": "string" },
+        "KATEGORI": { "type": "string" },
+        "SATUAN": { "type": "string" },
+        "STOK": { "type": "number" },
+        "MIN_STOK": { "type": "number" }
+      },
+      "required": ["ID", "KODE", "NAMA"]
+    },
+    "BarangMasuk": {
+      "title": "BarangMasuk",
+      "description": "Transaction log for received inventory items",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "TANGGAL": { "type": "string" },
+        "KODE_BARANG": { "type": "string" },
+        "NAMA_BARANG": { "type": "string" },
+        "JUMLAH": { "type": "number" },
+        "SUPLIER": { "type": "string" }
+      },
+      "required": ["ID", "TANGGAL", "KODE_BARANG", "JUMLAH"]
+    },
+    "BarangKeluar": {
+      "title": "BarangKeluar",
+      "description": "Transaction log for distributed inventory items",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "TANGGAL": { "type": "string" },
+        "KODE_BARANG": { "type": "string" },
+        "NAMA_BARANG": { "type": "string" },
+        "JUMLAH": { "type": "number" },
+        "PENERIMA": { "type": "string" }
+      },
+      "required": ["ID", "TANGGAL", "KODE_BARANG", "JUMLAH"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Classroom course details",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "NAME": { "type": "string" },
+        "TEACHER_NAME": { "type": "string" },
+        "COLOR": { "type": "string" }
+      },
+      "required": ["ID", "NAME"]
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "description": "Classroom assignments or tasks",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "COURSE_ID": { "type": "string" },
+        "TITLE": { "type": "string" },
+        "DESCRIPTION": { "type": "string" },
+        "DUE_DATE": { "type": "string" }
+      },
+      "required": ["ID", "COURSE_ID", "TITLE"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Student assignment submission",
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "ASSIGNMENT_ID": { "type": "string" },
+        "STUDENT_ID": { "type": "string" },
+        "STUDENT_NAME": { "type": "string" },
+        "STATUS": { "type": "string" },
+        "GRADE": { "type": "number" }
+      },
+      "required": ["ID", "ASSIGNMENT_ID", "STUDENT_ID"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "School configuration and master settings",
+      "type": "object",
+      "properties": {
+        "SCHOOL_NAME": { "type": "string" },
+        "SCHOOL_NPSN": { "type": "string" },
+        "HEADMASTER": { "type": "string" },
+        "TREASURER": { "type": "string" },
+        "WAREHOUSE_OFFICER": { "type": "string" }
+      },
+      "required": ["SCHOOL_NAME", "SCHOOL_NPSN"]
+    }
+  },
+  "firestore": {
+    "/configs/{id}": {
+      "schema": "Config",
+      "description": "School configuration parameters and profile settings"
+    },
+    "/accounts/{accountId}": {
+      "schema": "User",
+      "description": "Individual accounts for users (students, teachers, etc.)"
+    },
+    "/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Individual school assets"
+    },
+    "/inventory_items/{itemId}": {
+      "schema": "Item",
+      "description": "Individual inventory stock items"
+    },
+    "/barang_masuk/{id}": {
+      "schema": "BarangMasuk",
+      "description": "Log of goods entered"
+    },
+    "/barang_keluar/{id}": {
+      "schema": "BarangKeluar",
+      "description": "Log of goods distributed"
+    },
+    "/courses/{courseId}": {
+      "schema": "Course",
+      "description": "Classroom courses list"
+    },
+    "/assignments/{assignmentId}": {
+      "schema": "Assignment",
+      "description": "Course assignments"
+    },
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Student submissions and grades"
+    }
+  }
+}
