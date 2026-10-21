@@ -26,9 +26,13 @@ import {
   AlignLeft,
   Sliders,
   Check,
+  CloudUpload,
+  HardDrive,
+  Share2,
 } from 'lucide-react';
 import { BeritaAcaraOptions, pdfService } from '../services/pdfService';
 import { db } from '../services/localStorageService';
+import { googleWorkspace } from '../services/googleWorkspace';
 import { SignaturePad } from './SignaturePad';
 import { BATemplate } from '../types';
 
@@ -399,6 +403,91 @@ export const BeritaAcaraPreviewModal: React.FC<BeritaAcaraPreviewModalProps> = (
     }
   };
 
+  // Google Workspace Export states & handlers
+  const [isExportingDocs, setIsExportingDocs] = useState(false);
+  const [docsResultUrl, setDocsResultUrl] = useState<string | null>(null);
+  const [isUploadingDrive, setIsUploadingDrive] = useState(false);
+  const [driveResultUrl, setDriveResultUrl] = useState<string | null>(null);
+  const [showWorkspaceConfirm, setShowWorkspaceConfirm] = useState<'DOCS' | 'DRIVE' | null>(null);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+
+  const handleInitiateDocsExport = () => {
+    setShowWorkspaceConfirm('DOCS');
+  };
+
+  const handleInitiateDriveUpload = () => {
+    setShowWorkspaceConfirm('DRIVE');
+  };
+
+  const handleExecuteExportGoogleDocs = async () => {
+    setShowWorkspaceConfirm(null);
+    setIsExportingDocs(true);
+    setWorkspaceError(null);
+    try {
+      let token = googleWorkspace.getAccessToken();
+      if (!token) {
+        token = await googleWorkspace.signInWithGoogleWorkspace();
+      }
+      if (!token) {
+        throw new Error('Gagal menghubungkan akun Google Workspace.');
+      }
+
+      const formattedContent = `
+${currentOptions.title.toUpperCase()}
+Nomor: ${currentOptions.docNo || '-'}
+Tanggal: ${currentOptions.date || new Date().toLocaleDateString('id-ID')}
+
+${currentOptions.description || ''}
+
+RINCIAN BARANG / PEKERJAAN:
+${currentOptions.tableData?.headers?.join(' | ') || ''}
+${(currentOptions.tableData?.rows || []).map((r: any) => (Array.isArray(r) ? r.join(' | ') : Object.values(r).join(' | '))).join('\n')}
+
+${currentOptions.closingNote || 'Demikian Berita Acara ini dibuat dengan sebenarnya.'}
+
+Pihak Pertama: ${currentOptions.leftSigner?.name || '-'} (${currentOptions.leftSigner?.title || '-'})
+Pihak Kedua: ${currentOptions.rightSigner?.name || '-'} (${currentOptions.rightSigner?.title || '-'})
+${currentOptions.includeHeadmaster ? `Mengetahui: ${currentOptions.centerSigner?.name || config.HEADMASTER || '-'} (${currentOptions.centerSigner?.title || 'Kepala Sekolah'})` : ''}
+      `.trim();
+
+      const docTitle = `${currentOptions.title} - ${currentOptions.docNo || 'No-Draft'}`;
+      const result = await googleWorkspace.createGoogleDoc(token, docTitle, formattedContent);
+      setDocsResultUrl(result.url);
+      db.logAudit('EXPORT', 'GOOGLE_DOCS', currentOptions.docNo || 'BA', { title: docTitle, url: result.url });
+    } catch (err: any) {
+      setWorkspaceError(err?.message || 'Gagal mengekspor dokumen ke Google Docs.');
+    } finally {
+      setIsExportingDocs(false);
+    }
+  };
+
+  const handleExecuteUploadDrive = async () => {
+    setShowWorkspaceConfirm(null);
+    setIsUploadingDrive(true);
+    setWorkspaceError(null);
+    try {
+      let token = googleWorkspace.getAccessToken();
+      if (!token) {
+        token = await googleWorkspace.signInWithGoogleWorkspace();
+      }
+      if (!token) {
+        throw new Error('Gagal menghubungkan akun Google Workspace.');
+      }
+
+      const pdfBlob = await pdfService.getBeritaAcaraBlob(currentOptions);
+      const cleanTitle = (currentOptions.title || 'Berita_Acara').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const cleanDocNo = currentOptions.docNo ? currentOptions.docNo.replace(/[^a-zA-Z0-9_-]/g, '_') : Date.now();
+      const fileName = `${cleanTitle}_${cleanDocNo}.pdf`;
+      const result = await googleWorkspace.uploadBlobToDrive(token, fileName, 'application/pdf', pdfBlob, 'Dokumen Berita Acara Sekolah');
+      setDriveResultUrl(result.url);
+      db.logAudit('UPLOAD', 'GOOGLE_DRIVE', result.fileId, { fileName, url: result.url });
+    } catch (err: any) {
+      setWorkspaceError(err?.message || 'Gagal mengunggah berkas ke Google Drive.');
+    } finally {
+      setIsUploadingDrive(false);
+    }
+  };
+
   const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -577,6 +666,30 @@ export const BeritaAcaraPreviewModal: React.FC<BeritaAcaraPreviewModalProps> = (
               <span>Tab Baru</span>
             </button>
 
+            {/* Google Docs Direct Export Button */}
+            <button
+              id="btn-export-google-docs-ba"
+              onClick={handleInitiateDocsExport}
+              disabled={isExportingDocs}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-800 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="Ekspor format teks Berita Acara ke Google Docs"
+            >
+              <FileText className={`w-3.5 h-3.5 text-blue-600 ${isExportingDocs ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Google Docs</span>
+            </button>
+
+            {/* Google Drive PDF Backup Button */}
+            <button
+              id="btn-upload-google-drive-ba"
+              onClick={handleInitiateDriveUpload}
+              disabled={isUploadingDrive}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="Unggah salinan berkas PDF ke Google Drive sekolah"
+            >
+              <HardDrive className={`w-3.5 h-3.5 text-emerald-600 ${isUploadingDrive ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Google Drive</span>
+            </button>
+
             <button
               id="btn-download-pdf-ba"
               onClick={handleDownloadPdf}
@@ -614,6 +727,57 @@ export const BeritaAcaraPreviewModal: React.FC<BeritaAcaraPreviewModalProps> = (
             </button>
           </div>
         </div>
+
+        {/* Google Workspace Notification Banner */}
+        {(docsResultUrl || driveResultUrl || workspaceError) && (
+          <div className="px-5 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-3 text-xs shrink-0">
+            {docsResultUrl && (
+              <div className="flex items-center gap-2 text-blue-900 font-semibold">
+                <Check className="w-4 h-4 text-blue-600" />
+                <span>Dokumen Google Docs berhasil dibuat!</span>
+                <a
+                  href={docsResultUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold underline text-blue-700 hover:text-blue-900 flex items-center gap-1 ml-1"
+                >
+                  <ExternalLink size={12} /> Buka di Google Docs
+                </a>
+              </div>
+            )}
+            {driveResultUrl && (
+              <div className="flex items-center gap-2 text-emerald-900 font-semibold">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>PDF berhasil diunggah ke Google Drive!</span>
+                <a
+                  href={driveResultUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold underline text-emerald-700 hover:text-emerald-900 flex items-center gap-1 ml-1"
+                >
+                  <ExternalLink size={12} /> Buka di Google Drive
+                </a>
+              </div>
+            )}
+            {workspaceError && (
+              <div className="flex items-center gap-2 text-rose-800 font-medium">
+                <X className="w-4 h-4 text-rose-600" />
+                <span>{workspaceError}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setDocsResultUrl(null);
+                setDriveResultUrl(null);
+                setWorkspaceError(null);
+              }}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Modal Body: Split View (Settings Sidebar + Live PDF Preview) */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -1814,6 +1978,92 @@ export const BeritaAcaraPreviewModal: React.FC<BeritaAcaraPreviewModalProps> = (
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* MODAL KONFIRMASI GOOGLE WORKSPACE (DOCS / DRIVE) */}
+      {showWorkspaceConfirm && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/70 p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-2xl border border-slate-200 space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
+                {showWorkspaceConfirm === 'DOCS' ? (
+                  <>
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <span>Konfirmasi Ekspor ke Google Docs</span>
+                  </>
+                ) : (
+                  <>
+                    <HardDrive className="w-5 h-5 text-emerald-600" />
+                    <span>Konfirmasi Unggah ke Google Drive</span>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWorkspaceConfirm(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+              {showWorkspaceConfirm === 'DOCS' ? (
+                <>
+                  <p>
+                    Aplikasi akan membuat dokumen baru di akun <strong>Google Docs</strong> Anda berisi naskah lengkap Berita Acara ini:
+                  </p>
+                  <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1 text-[11px] text-blue-900">
+                    <p className="font-bold">{currentOptions.title}</p>
+                    <p>Nomor: {currentOptions.docNo || 'DRAFT'}</p>
+                    <p>Format: Google Document resmi (dapat diedit online bersama guru/staf).</p>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Operasi ini memerlukan persetujuan Anda untuk menulis data ke akun Google Workspace Anda.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Aplikasi akan mengunggah berkas PDF Berita Acara ke folder <strong>"Dokumen Berita Acara Sekolah"</strong> di <strong>Google Drive</strong> Anda:
+                  </p>
+                  <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1 text-[11px] text-emerald-900">
+                    <p className="font-bold">{currentOptions.title}</p>
+                    <p>Ukuran Kertas: {paperSize.toUpperCase()}</p>
+                    <p>Penyimpanan: Google Drive Cloud terenkripsi.</p>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Operasi ini memerlukan persetujuan Anda untuk menyimpan berkas ke Google Drive.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowWorkspaceConfirm(null)}
+                className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={
+                  showWorkspaceConfirm === 'DOCS'
+                    ? handleExecuteExportGoogleDocs
+                    : handleExecuteUploadDrive
+                }
+                className={`px-4 py-1.5 rounded-lg text-white font-bold text-xs shadow-xs transition-colors ${
+                  showWorkspaceConfirm === 'DOCS'
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {showWorkspaceConfirm === 'DOCS' ? 'Buat di Google Docs' : 'Unggah ke Drive'}
+              </button>
+            </div>
           </div>
         </div>
       )}

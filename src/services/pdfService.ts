@@ -845,6 +845,11 @@ export class PdfService {
     return URL.createObjectURL(blob);
   }
 
+  public async getBeritaAcaraBlob(options: BeritaAcaraOptions): Promise<Blob> {
+    const doc = await this.generateBeritaAcara({ ...options, autoSave: false, skipDownload: true });
+    return doc.output('blob');
+  }
+
   // --- 2. Kartu Stok PDF ---
   public generateKartuStok(kodeBarang: string): void {
     this.generateKartuStokPDF(kodeBarang);

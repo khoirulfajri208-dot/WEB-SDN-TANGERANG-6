@@ -1,5 +1,8 @@
 import { db } from './localStorageService';
 import { User, Item } from '../types';
+import { auth } from '../firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import firebaseAppletConfig from '../../firebase-applet-config.json';
 
 // Schema mapping for all Google Sheets
 export const SHEET_SCHEMAS: Record<string, string[]> = {
@@ -251,16 +254,29 @@ export const SHEET_SCHEMAS: Record<string, string[]> = {
 };
 
 class GoogleWorkspaceService {
-  private defaultClientId = '';
+  private defaultClientId = (firebaseAppletConfig as any)?.oAuthClientId || '686699028790-8i2o5hu9kn6k97vuirnu12mghvqlmgtl.apps.googleusercontent.com';
+  private inMemoryAccessToken: string | null = null;
   private scopes = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
     'https://www.googleapis.com/auth/documents',
+    'https://www.googleapis.com/auth/documents.readonly',
+    'https://www.googleapis.com/auth/drive.activity',
+    'https://www.googleapis.com/auth/drive.activity.readonly',
+    'https://www.googleapis.com/auth/drive.appdata',
+    'https://www.googleapis.com/auth/drive.apps.readonly',
+    'https://www.googleapis.com/auth/drive.install',
+    'https://www.googleapis.com/auth/drive.meet.readonly',
+    'https://www.googleapis.com/auth/drive.metadata',
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/drive.photos.readonly',
+    'https://www.googleapis.com/auth/drive.scripts',
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/presentations',
     'https://www.googleapis.com/auth/meetings.space.created',
-    'https://www.googleapis.com/auth/drive.metadata.readonly'
   ];
 
   public getClientId(): string {
@@ -272,7 +288,22 @@ class GoogleWorkspaceService {
   }
 
   public getAccessToken(): string | null {
-    return db.getGoogleAccessToken();
+    return this.inMemoryAccessToken || db.getGoogleAccessToken();
+  }
+
+  public setAccessToken(token: string | null): void {
+    this.inMemoryAccessToken = token;
+    db.setGoogleAccessToken(token || '');
+  }
+
+  public async signOut(): Promise<void> {
+    this.inMemoryAccessToken = null;
+    db.setGoogleAccessToken('');
+    try {
+      await auth.signOut();
+    } catch (e) {
+      console.warn('Sign out error:', e);
+    }
   }
 
   public getSpreadsheetId(): string | null {
@@ -281,6 +312,33 @@ class GoogleWorkspaceService {
 
   public getAppsScriptUrl(): string | null {
     return db.getAppsScriptUrl();
+  }
+
+  /**
+   * Primary Sign-In with Google Workspace (Firebase Auth with GIS Fallback)
+   */
+  public async signInWithGoogleWorkspace(): Promise<string> {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      // Add Workspace scopes for Drive, Sheets, Docs
+      provider.addScope('https://www.googleapis.com/auth/drive');
+      provider.addScope('https://www.googleapis.com/auth/drive.file');
+      provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+      provider.addScope('https://www.googleapis.com/auth/documents');
+
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        this.setAccessToken(credential.accessToken);
+        return credential.accessToken;
+      }
+    } catch (popupErr: any) {
+      console.info('[Google Auth] Popup auth falling back to GIS token client:', popupErr?.message || popupErr);
+    }
+
+    // Fallback to GIS client
+    return this.requestOAuthToken();
   }
 
   public async requestOAuthToken(customClientId?: string): Promise<string> {
@@ -309,7 +367,7 @@ class GoogleWorkspaceService {
               if (response.error === 'popup_closed_by_user') {
                 reject(new Error('Jendela persetujuan login Google ditutup oleh pengguna.'));
               } else if (response.error === 'access_denied') {
-                reject(new Error('Akses ditolak. Berikan izin akses Google Sheets & Drive untuk melanjutkan.'));
+                reject(new Error('Akses ditolak. Berikan izin akses Google Drive, Sheets & Docs untuk melanjutkan.'));
               } else {
                 reject(new Error(`Google OAuth Error: ${response.error}`));
               }
@@ -328,6 +386,22 @@ class GoogleWorkspaceService {
         reject(err);
       }
     });
+  }
+
+  /**
+   * List Google Docs created or owned by the user
+   */
+  public async listUserDocs(accessToken: string): Promise<Array<{ id: string; name: string; createdTime: string; webViewLink: string }>> {
+    const q = encodeURIComponent("mimeType='application/vnd.google-apps.document' and trashed=false");
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,createdTime,webViewLink)&orderBy=createdTime desc&pageSize=30`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Gagal memuat daftar dokumen Google Docs.');
+    }
+    const json = await res.json();
+    return json.files || [];
   }
 
   // --- Apps Script Web App Sync (No OAuth Client ID Needed) ---
@@ -1128,6 +1202,73 @@ class GoogleWorkspaceService {
       fileId: uploadJson.id,
       url: uploadJson.webViewLink || `https://drive.google.com/file/d/${uploadJson.id}/view`,
     };
+  }
+
+  public async uploadBlobToDrive(
+    accessToken: string,
+    fileName: string,
+    mimeType: string,
+    blob: Blob,
+    folderName = 'Dokumen Bendahara Barang'
+  ): Promise<{ fileId: string; fileName: string; url: string; sizeBytes: number }> {
+    const folderId = await this.ensureDriveFolder(accessToken, folderName);
+    const metadata = {
+      name: fileName,
+      parents: folderId ? [folderId] : undefined,
+    };
+    const formData = new FormData();
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    formData.append('file', blob);
+
+    const uploadRes = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,webViewLink',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      }
+    );
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Gagal mengunggah berkas ke Google Drive.');
+    }
+    const uploadJson = await uploadRes.json();
+    db.logAudit('UPLOAD', 'GOOGLE_DRIVE', uploadJson.id, { fileName, size: uploadJson.size });
+    return {
+      fileId: uploadJson.id,
+      fileName: uploadJson.name || fileName,
+      url: uploadJson.webViewLink || `https://drive.google.com/file/d/${uploadJson.id}/view`,
+      sizeBytes: Number(uploadJson.size) || blob.size,
+    };
+  }
+
+  public async listDriveFiles(
+    accessToken: string,
+    query?: string
+  ): Promise<Array<{ id: string; name: string; mimeType: string; size?: string; webViewLink: string; createdTime: string }>> {
+    let q = "trashed=false";
+    if (query && query.trim()) {
+      q += ` and name contains '${query.trim().replace(/'/g, "\\'")}'`;
+    }
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,webViewLink,createdTime)&orderBy=modifiedTime desc&pageSize=40`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Gagal membaca berkas dari Google Drive.');
+    }
+    const json = await res.json();
+    return (json.files || []).map((f: any) => ({
+      id: f.id,
+      name: f.name,
+      mimeType: f.mimeType,
+      size: f.size ? `${(Number(f.size) / 1024).toFixed(1)} KB` : '-',
+      webViewLink: f.webViewLink || `https://drive.google.com/file/d/${f.id}/view`,
+      createdTime: f.createdTime || new Date().toISOString(),
+    }));
   }
 
   // --- Google Docs ---
