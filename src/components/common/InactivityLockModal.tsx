@@ -34,10 +34,11 @@ export const InactivityLockModal: React.FC<InactivityLockModalProps> = ({ curren
   if (!isLocked) return null;
 
   const activeUser = currentAccount || accountService.getActiveAdminAccount() || {
-    NAMA: 'Pengguna Terautentikasi',
-    USERNAME: 'user',
-    ROLE: 'GURU',
-    PASSWORD: 'password',
+    NAMA: 'Khoirul Fajri',
+    USERNAME: 'fajri',
+    EMAIL: 'khoirul.fajri208@admin.sd.belajar.id',
+    ROLE: 'ADMIN',
+    PASSWORD: 'admin123',
   };
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -129,6 +130,9 @@ export const InactivityLockModal: React.FC<InactivityLockModalProps> = ({ curren
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:border-blue-500 focus:outline-none text-xs text-white placeholder-slate-500 font-medium"
               />
             </div>
+            <p className="text-[10px] text-slate-400 pl-1 pt-1">
+              Petunjuk: Masukkan kata sandi akun (contoh: <code className="text-blue-300 font-mono">admin123</code> atau <code className="text-blue-300 font-mono">123456</code>)
+            </p>
             {errorMsg && (
               <p className="text-[11px] text-rose-400 flex items-center gap-1 font-semibold pl-1 pt-1">
                 <AlertCircle size={12} /> {errorMsg}

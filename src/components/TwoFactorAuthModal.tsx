@@ -4,6 +4,7 @@ import {
   Copy, Check, AlertCircle, X, Download, Shield, Clock
 } from 'lucide-react';
 import { db } from '../services/localStorageService';
+import { securityService } from '../services/securityService';
 
 interface TwoFactorAuthModalProps {
   isOpen: boolean;
@@ -40,9 +41,9 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const config = db.getConfig();
+      const secCfg = securityService.getConfig();
       const saved2fa = localStorage.getItem('bb_2fa_enabled') === 'true';
-      const savedTimeout = parseInt(localStorage.getItem('bb_session_timeout') || '15', 10);
+      const savedTimeout = secCfg.inactivityTimeoutMinutes || parseInt(localStorage.getItem('bb_session_timeout') || '15', 10);
       setIsEnabled(saved2fa);
       setSessionTimeout(savedTimeout);
       setSaveSuccess(false);
@@ -68,6 +69,7 @@ export const TwoFactorAuthModal: React.FC<TwoFactorAuthModalProps> = ({
 
     localStorage.setItem('bb_2fa_enabled', isEnabled ? 'true' : 'false');
     localStorage.setItem('bb_session_timeout', sessionTimeout.toString());
+    securityService.updateConfig({ inactivityTimeoutMinutes: sessionTimeout, enableInactivityLock: true });
     if (recoveryCodes.length > 0) {
       localStorage.setItem('bb_recovery_codes', JSON.stringify(recoveryCodes));
     }

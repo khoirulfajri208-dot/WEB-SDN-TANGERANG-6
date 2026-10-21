@@ -52,10 +52,10 @@ export const OFFICIAL_USERS: User[] = [
     ID: 'USR-0002',
     NIP: '199710232025211008',
     NAMA: 'Khoirul Fajri',
-    EMAIL: 'khoirul.fajri@sdtng6.com',
-    ROLE: 'OPERATOR',
+    EMAIL: 'khoirul.fajri208@admin.sd.belajar.id',
+    ROLE: 'ADMIN',
     STATUS: 'AKTIF',
-    JABATAN: 'Pengurus Barang Pembantu & Tenaga Administrasi',
+    JABATAN: 'Administrator & Pengurus Barang (khoirul.fajri208@admin.sd.belajar.id)',
     GOLONGAN_RUANG: 'Penata Muda (III/a)',
   },
   {

@@ -21,8 +21,10 @@ import {
   BookOpen,
   HardDrive,
   ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { db } from '../services/localStorageService';
+import { securityService } from '../services/securityService';
 import { firebaseService, FirebaseSyncStatus } from '../services/firebaseService';
 import { User, ActivePage } from '../types';
 import { OfflineSyncIndicator } from './OfflineSyncIndicator';
@@ -487,6 +489,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <ShieldCheck size={15} className="text-indigo-600" />
                   <span>Keamanan 2FA & Kunci Sesi</span>
+                </button>
+
+                {/* Kunci Layar Sekarang */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    securityService.lockSession();
+                  }}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-amber-50 text-amber-900 text-left font-bold transition-colors"
+                >
+                  <Lock size={15} className="text-amber-600" />
+                  <span>Kunci Layar Sekarang (Lock Screen)</span>
                 </button>
 
                 <div className="border-t border-slate-100 my-1" />

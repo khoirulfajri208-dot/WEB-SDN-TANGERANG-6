@@ -435,15 +435,15 @@ export const BeritaAcaraPreviewModal: React.FC<BeritaAcaraPreviewModalProps> = (
       const formattedContent = `
 ${currentOptions.title.toUpperCase()}
 Nomor: ${currentOptions.docNo || '-'}
-Tanggal: ${currentOptions.date || new Date().toLocaleDateString('id-ID')}
+Tanggal: ${currentOptions.signatures?.dateStr || new Date().toLocaleDateString('id-ID')}
 
 ${currentOptions.description || ''}
 
 RINCIAN BARANG / PEKERJAAN:
-${currentOptions.tableData?.headers?.join(' | ') || ''}
-${(currentOptions.tableData?.rows || []).map((r: any) => (Array.isArray(r) ? r.join(' | ') : Object.values(r).join(' | '))).join('\n')}
+${(currentOptions.tableHeaders || []).join(' | ')}
+${(currentOptions.tableRows || []).map((r: any) => (Array.isArray(r) ? r.join(' | ') : Object.values(r).join(' | '))).join('\n')}
 
-${currentOptions.closingNote || 'Demikian Berita Acara ini dibuat dengan sebenarnya.'}
+${currentOptions.footerText || 'Demikian Berita Acara ini dibuat dengan sebenarnya.'}
 
 Pihak Pertama: ${currentOptions.leftSigner?.name || '-'} (${currentOptions.leftSigner?.title || '-'})
 Pihak Kedua: ${currentOptions.rightSigner?.name || '-'} (${currentOptions.rightSigner?.title || '-'})

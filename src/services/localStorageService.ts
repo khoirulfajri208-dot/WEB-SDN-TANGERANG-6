@@ -235,7 +235,7 @@ class LocalStorageService {
       this.setItem(STORAGE_KEYS.ARKAS_ACCOUNTS, DEFAULT_ARKAS_ACCOUNTS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_USER)) {
-      this.setItem(STORAGE_KEYS.ACTIVE_USER, DEFAULT_USERS[3] || DEFAULT_USERS[0]);
+      this.setItem(STORAGE_KEYS.ACTIVE_USER, DEFAULT_USERS[1] || DEFAULT_USERS[0]);
     }
     this.rebuildStockLedger();
   }
@@ -249,7 +249,7 @@ class LocalStorageService {
     this.setItem(STORAGE_KEYS.BARANG_KELUAR, OFFICIAL_BARANG_KELUAR, notify);
     this.setItem(STORAGE_KEYS.ASSETS, OFFICIAL_ASSETS, notify);
     this.setItem(STORAGE_KEYS.ARKAS_ACCOUNTS, OFFICIAL_ARKAS_ACCOUNTS, notify);
-    this.setItem(STORAGE_KEYS.ACTIVE_USER, OFFICIAL_USERS[3] || OFFICIAL_USERS[0], notify);
+    this.setItem(STORAGE_KEYS.ACTIVE_USER, OFFICIAL_USERS[1] || OFFICIAL_USERS[0], notify);
     localStorage.setItem(STORAGE_KEYS.DATASET_VERSION, DATASET_VERSION);
     this.rebuildStockLedger();
     this.logAudit('IMPORT', 'DATABASE', 'OFFICIAL_DATA_SEED', { version: DATASET_VERSION });
@@ -257,7 +257,13 @@ class LocalStorageService {
 
   // --- Active User ---
   public getActiveUser(): User {
-    return this.getItem<User>(STORAGE_KEYS.ACTIVE_USER, DEFAULT_USERS[4]);
+    const user = this.getItem<User | null>(STORAGE_KEYS.ACTIVE_USER, null);
+    if (user && user.NAMA && user.NAMA !== 'Pengguna Terautentikasi' && user.ROLE) {
+      return user;
+    }
+    const fajri = this.getUsers().find(u => u.NAMA.toLowerCase().includes('fajri') || u.EMAIL?.includes('fajri')) || DEFAULT_USERS[1];
+    this.setActiveUser(fajri);
+    return fajri;
   }
 
   public setActiveUser(user: User): void {
